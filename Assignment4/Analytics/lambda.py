@@ -1,6 +1,8 @@
 import json
 import datetime 
 import boto3
+import decimal
+from boto3.dynamodb.conditions import Key, Attr
 
 dynamodb = boto3.resource('dynamodb')
 
@@ -41,6 +43,30 @@ def lambda_handler(event, context):
         else :
             # BAD Request
             return error_object('Bad Request - needs to send a request body')
+    elif event['httpMethod'] == 'GET':
+        #Now we are querying the database
+        if event['queryStringParameters']:
+            # now we have to build the conditions
+            query_request = event['queryStringParameters']
+            params = Attr('EventDate').gt('0')
+            if 'GameName' in query_request and query_request['GameName'] :
+                params = params & Attr('GameName').eq(query_request['GameName'])
+            if 'Username' in query_request and query_request['Username'] :
+                params = params & Attr('Username').eq(query_request['Username'])
+            if 'DateTimeStart' in query_request and query_request['DateTimeStart'] :
+                params = params & Attr('EventDate').gte(query_request['DateTimeStart'])
+            if 'DateTimeEnd' in query_request and query_request['DateTimeEnd'] :
+                params = params & Attr('EventDate').lte(query_request['DateTimeEnd'])                
+            return {
+                'statusCode': 200,
+                'body': json.dumps(table.scan(FilterExpression = params), cls = CustomJsonEncoder)
+            }
+        else:
+            # Performs a simple table scan
+            return {
+                'statusCode': 200,
+                'body': json.dumps(table.scan(), cls = CustomJsonEncoder)#'{"result": "Getting all events"}'
+            }
     else:
         return error_object('Only GET and POST are supported')
 
@@ -64,3 +90,55 @@ def verify_event(event_name):
     event = dynamodb.Table('Event')
     resp_event = event.get_item(Key={'Name':event_name})
     return 'Item' in resp_event
+
+class CustomJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        return super(CustomJsonEncoder, self).default(obj)
+
+"""
+{
+    'resource': '/AnalyticsFunc', 
+    'path': '/AnalyticsFunc',
+     'httpMethod': 'GET', 
+     'headers': 
+     {
+         'Accept': '*/*', 
+         'Accept-Encoding': 'gzip, deflate, br', 
+         'Cache-Control': 'no-cache', 
+         'Content-Type': 'text/plain', 
+         'Host': 'zfum6anmbl.execute-api.us-east-1.amazonaws.com', 
+         'Postman-Token': 'fc0a5d05-ea84-4013-b6e0-26c4bd8d3ea6', 
+         'User-Agent': 'PostmanRuntime/7.24.0', 
+         'X-Amzn-Trace-Id': 'Root=1-5e88981a-d576563b9526715dac987b31', 
+         'X-Forwarded-For': '142.116.183.116', 
+         'X-Forwarded-Port': '443', 
+         'X-Forwarded-Proto': 'https'
+    },
+    'multiValueHeaders': 
+    {
+        'Accept': ['*/*'], 
+        'Accept-Encoding': ['gzip, deflate, br'], 
+        'Cache-Control': ['no-cache'], 
+        'Content-Type': ['text/plain'], 
+        'Host': ['zfum6anmbl.execute-api.us-east-1.amazonaws.com'],
+        'Postman-Token': ['fc0a5d05-ea84-4013-b6e0-26c4bd8d3ea6'], 
+        'User-Agent': ['PostmanRuntime/7.24.0'], 
+        'X-Amzn-Trace-Id': ['Root=1-5e88981a-d576563b9526715dac987b31'], 
+        'X-Forwarded-For': ['142.116.183.116'], 
+        'X-Forwarded-Port': ['443'], 
+        'X-Forwarded-Proto': ['https']
+    }, 
+    'queryStringParameters': 
+    {
+        'ThisIsParam1': 'Param1', 
+        'ThisIsParam2': 'Param2'
+    }, 
+    'multiValueQueryStringParameters': 
+    {
+        'ThisIsParam1': ['Param1'], 
+        'ThisIsParam2': ['Param2']
+    }, 
+    'pathParameters': None, 'stageVariables': None, 'requestContext': {'resourceId': '1nlnlt', 'resourcePath': '/AnalyticsFunc', 'httpMethod': 'GET', 'extendedRequestId': 'Kdy0GHlMoAMFyfw=', 'requestTime': '04/Apr/2020:14:22:18 +0000', 'path': '/default/AnalyticsFunc', 'accountId': '094268863370', 'protocol': 'HTTP/1.1', 'stage': 'default', 'domainPrefix': 'zfum6anmbl', 'requestTimeEpoch': 1586010138176, 'requestId': '1a2d33bf-6805-45c4-a520-0338c1b2f4dc', 'identity': {'cognitoIdentityPoolId': None, 'accountId': None, 'cognitoIdentityId': None, 'caller': None, 'sourceIp': '142.116.183.116', 'principalOrgId': None, 'accessKey': None, 'cognitoAuthenticationType': None, 'cognitoAuthenticationProvider': None, 'userArn': None, 'userAgent': 'PostmanRuntime/7.24.0', 'user': None}, 'domainName': 'zfum6anmbl.execute-api.us-east-1.amazonaws.com', 'apiId': 'zfum6anmbl'}, 'body': '{\n}', 'isBase64Encoded': False}
+"""

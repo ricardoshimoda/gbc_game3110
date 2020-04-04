@@ -6,11 +6,10 @@ def lambda_handler(event, context):
     table = dynamodb.Table('RemoteSettings')
     # tries to find information about the game
     if event['httpMethod'] == 'GET':
-        if 'body' in event:
-            request_text = event['body']
-            body = json.loads(request_text)
-            if 'GameName' in body:
-                game_name = body['GameName']
+        if 'queryStringParameters' in event:
+            params = event['queryStringParameters']
+            if 'GameName' in params:
+                game_name = params['GameName']
                 response = table.get_item(Key={'GameName':game_name})
                 if 'Item' in response:
                     item = response['Item']
@@ -21,10 +20,10 @@ def lambda_handler(event, context):
                 else :
                     return error_object('Game not found: ' + game_name)
             else:
-                return error_object('Bad Request - needs to send GameName in the request body')
+                return error_object('Bad Request - needs to send GameName in the request querystring parameter')
         else :
             # BAD Request
-            return error_object('Bad Request - needs to send a request body')
+            return error_object('Bad Request - needs to send a request querystring parameter')
     elif event['httpMethod'] == 'POST':
         if 'body' in event:
             request_text = event['body']
