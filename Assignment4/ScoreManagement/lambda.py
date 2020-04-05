@@ -45,7 +45,7 @@ def lambda_handler(event, context):
                 if 'Item' in response:
                     table.update_item(
                         Key = {
-                            'GameName' : score_key
+                            'UserGame' : score_key
                         },
                         UpdateExpression = 'SET Score = :val',
                         ExpressionAttributeValues={
