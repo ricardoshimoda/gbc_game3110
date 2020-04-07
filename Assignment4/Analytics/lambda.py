@@ -56,7 +56,7 @@ def lambda_handler(event, context):
             if 'DateTimeStart' in query_request and query_request['DateTimeStart'] :
                 params = params & Attr('EventDate').gte(query_request['DateTimeStart'])
             if 'DateTimeEnd' in query_request and query_request['DateTimeEnd'] :
-                params = params & Attr('EventDate').lte(query_request['DateTimeEnd'])                
+                params = params & Attr('EventDate').lte(query_request['DateTimeEnd'])
             return {
                 'statusCode': 200,
                 'body': json.dumps(table.scan(FilterExpression = params), cls = CustomJsonEncoder)

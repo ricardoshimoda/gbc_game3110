@@ -18,11 +18,14 @@ def lambda_handler(event, context):
                 resp_user = table.get_item(Key={'user_id':user_id})
                 if 'Item' in resp_user and resp_user['Item']:
                     return error_object('Error - user with username ' + body['Username'] + ' already exists - be creative - get another')
-                item = {
+                new_entry = {
                     'user_id' : body['Username'],
                     'password': body['Password'],
                     'email': body['Email'],
                 }
+                table.put_item(
+                    Item = new_entry
+                )
                 return {
                     'statusCode': 200,
                     'body': '{"result": "User registered successfully"}'
